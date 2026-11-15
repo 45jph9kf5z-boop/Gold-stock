@@ -63,6 +63,7 @@ nav button{flex:1;border-radius:0;background:none;font-size:13px;color:var(--m);
 <section class="tb" id="t5" hidden><h2>إقفال اليوم</h2><div id="ck"></div>
 <h2>التقارير والنسخ الاحتياطي</h2><div class="cards"><button onclick="prn()">🖨 طباعة الجرد</button><button onclick="csv()">📊 تصدير الحركات</button><button onclick="kcsv()">📊 تصدير العهدة</button><button onclick="bk()">💾 نسخة JSON</button><button onclick="$('rf').click()">♻️ استعادة نسخة</button></div>
 <input type="file" id="rf" accept=".json" hidden onchange="rs(this)">
+<h2>النسخ الاحتياطي التلقائي</h2><div class="it" id="bs"></div><button onclick="pick()">📁 اختيار مجلد النسخ التلقائي</button>
 <p class="mu">البيانات محفوظة في متصفح هذا الجهاز فقط. مسح بيانات الموقع أو تغيير الجهاز يفقدها، فخذ نسخة احتياطية أسبوعياً.</p>
 <h2>سجل الأيام</h2><div id="hs"></div></section>
 <section class="tb" id="t6" hidden><h2>مطابقة الكاش</h2><div id="cs"></div>
@@ -207,7 +208,18 @@ const EN=`🪙 جرد سبائك الذهب|🪙 Gold Bar Stock
 تأكيد إقفال اليوم؟|Confirm closing this day?
 سيتم استبدال كل البيانات الحالية بالنسخة. متأكد؟|This replaces all current data with the backup. Continue?
 تمت الاستعادة|Backup restored
-ملف غير صالح|Invalid file`.split('\n').map(l=>l.split('|')).sort((a,b)=>b[0].length-a[0].length);
+ملف غير صالح|Invalid file
+هذه الميزة تعمل في Chrome أو Edge على الكمبيوتر فقط|This feature works in Chrome or Edge on a computer only
+تم اختيار المجلد: |Folder selected: 
+تم حفظ نسخة احتياطية في المجلد|Backup saved to the folder
+📁 اختيار مجلد النسخ التلقائي|📁 Choose auto-backup folder
+النسخ الاحتياطي التلقائي|Automatic backup
+📁 المجلد: غير محدد|📁 Folder: Not set
+📁 المجلد:|📁 Folder:
+🔒 التخزين الدائم: غير مفعّل|🔒 Persistent storage: Off
+🔒 التخزين الدائم: مفعّل|🔒 Persistent storage: On
+آخر نسخة: لا يوجد|Last backup: None
+آخر نسخة:|Last backup:`.split('\n').map(l=>l.split('|')).sort((a,b)=>b[0].length-a[0].length);
 const UR=[[/(^|[\s\d)])جم(?![\u0621-\u064A])/g,'$1g'],[/(\d) حركة/g,'$1 moves'],[/(\d) زيادة/g,'$1 over'],[/(\d) نقص/g,'$1 short'],[/زيادة (\d)/g,'Over $1'],[/نقص (\d)/g,'Short $1'],[/(\d+) فرق؟/g,'$1 difference(s)?'],[/؟/g,'?']];
 let L='ar';try{L=localStorage.getItem('goldlang')||'ar'}catch(e){}
 const T=s=>{if(L!='en'||!/[\u0600-\u06FF]/.test(s))return s;const t=s.trim();for(const[a,b]of EN)if(a.length<6&&t===a)return s.replace(a,b);for(const[a,b]of EN)if(a.length>=6)s=s.split(a).join(b);for(const[r,b]of UR)s=s.replace(r,b);return s};
@@ -226,7 +238,7 @@ let D=today(),editId=null,F={type:'in'};
 const lk=d=>!(S.c[d]&&S.c[d].done)||confirm('هذا اليوم مُقفل. هل تريد التعديل؟');
 const kl=()=>S.k.map(k=>{const ret=sum(k.r,r=>r.q);return{k,ret,rem:k.q-ret}});
 function tab(i){document.querySelectorAll('.tb').forEach((e,j)=>e.hidden=i!==j);document.querySelectorAll('nav button').forEach((e,j)=>e.classList.toggle('on',i===j));R();scrollTo(0,0)}
-function R(){$('dl').textContent=D;r1();r3();r4();r5();r6();const old=S.b?Date.now()-S.b>6048e5:S.m.length>0;$('bn').hidden=!old}
+function R(){$('dl').textContent=D;bst();r1();r3();r4();r5();r6();const old=S.b?Date.now()-S.b>6048e5:S.m.length>0;$('bn').hidden=!old}
 function r1(){const day=S.m.filter(m=>m.date===D),c=S.c[D]||{};let h='',t=[0,0,0,0],gw=0;
 W.forEach((w,i)=>{const v=c.pc&&c.pc[w]!=null?c.pc[w]:'',ob=bal(w,0),iq=sum(day.filter(m=>m.w===w&&m.type=='in'),m=>m.q),oq=sum(day.filter(m=>m.w===w&&m.type=='out'),m=>m.q),bq=bal(w);
 t=[t[0]+ob,t[1]+iq,t[2]+oq,t[3]+bq];gw+=bq*w;
@@ -263,10 +275,22 @@ const ds=[...new Set([...S.m.map(m=>m.date),...Object.keys(S.c)])].sort().revers
 $('hs').innerHTML=ds.map(d=>`<div class="it" onclick="D='${d}';$('dt').value=D;tab(0)">${d} ${S.c[d]&&S.c[d].done?'<span class="bd k">مُقفل</span>':'<span class="bd o">مفتوح</span>'} <small class="mu">${S.m.filter(m=>m.date===d).length} حركة${S.c[d]&&S.c[d].dd?' · '+S.c[d].dd+ ' فيه فروقات':''}</small></div>`).join('')||'<p class="mu">لا يوجد سجل بعد.</p>'}
 function ckc(i,v){const c=S.c[D]=S.c[D]||{t:[],n:''};c.t[i]=v;save()}
 function ckn(v){const c=S.c[D]=S.c[D]||{t:[],n:''};c.n=v;save()}
-function cls(){const c=S.c[D]=S.c[D]||{t:[],n:''};if(c.done)c.done=false;else{
+const DB=()=>new Promise((res,rej)=>{const r=indexedDB.open('goldfs',1);r.onupgradeneeded=()=>r.result.createObjectStore('h');r.onsuccess=()=>res(r.result);r.onerror=rej});
+const hget=async()=>{try{const db=await DB();return await new Promise(r=>{const q=db.transaction('h').objectStore('h').get('dir');q.onsuccess=()=>r(q.result||null);q.onerror=()=>r(null)})}catch(e){return null}};
+const hput=async h=>{const db=await DB();return new Promise(r=>{const t=db.transaction('h','readwrite');t.objectStore('h').put(h,'dir');t.oncomplete=r})};
+async function bst(){const h=await hget();let pr=false;try{pr=await navigator.storage.persisted()}catch(e){}
+$('bs').innerHTML=(h?'📁 المجلد: '+u(h.name):'📁 المجلد: غير محدد')+'<br>'+(pr?'🔒 التخزين الدائم: مفعّل':'🔒 التخزين الدائم: غير مفعّل')+'<br>'+(S.b?'آخر نسخة: '+new Date(S.b).toLocaleString('en-GB'):'آخر نسخة: لا يوجد')}
+async function pick(){if(!window.showDirectoryPicker)return alert('هذه الميزة تعمل في Chrome أو Edge على الكمبيوتر فقط');try{const h=await showDirectoryPicker({mode:'readwrite'});await hput(h);bst();alert('تم اختيار المجلد: '+h.name)}catch(e){}}
+async function abk(){try{const h=await hget();if(!h)return false;if(await h.queryPermission({mode:'readwrite'})!=='granted'&&await h.requestPermission({mode:'readwrite'})!=='granted')return false;
+const f=await h.getFileHandle('gold-backup-'+D+'.json',{create:true}),w=await f.createWritable();await w.write(JSON.stringify(S));await w.close();return true}catch(e){return false}}
+async function cls(){const c=S.c[D]=S.c[D]||{t:[],n:''};if(c.done){c.done=false;save();R();return}
 if(W.some(w=>!c.pc||c.pc[w]==null))return alert('أدخل العدد المعدود لكل وزن (اكتب 0 إذا ما فيه).');
 const dd=W.filter(w=>c.pc[w]!==bal(w)).length;if(dd&&!(c.n||'').trim())return alert('فيه فروقات. اكتب ملاحظة تشرحها قبل الإقفال.');
-if(CK.some((_,i)=>!c.t[i]))return alert('أكمل كل بنود القائمة أولاً');if(!confirm(dd?`إقفال اليوم مع ${dd} فرق؟`:'تأكيد إقفال اليوم؟'))return;c.done=true;c.dd=dd;c.at=new Date().toISOString()}save();R()}
+if(CK.some((_,i)=>!c.t[i]))return alert('أكمل كل بنود القائمة أولاً');
+try{const h0=await hget();if(h0&&await h0.queryPermission({mode:'readwrite'})!=='granted')await h0.requestPermission({mode:'readwrite'})}catch(e){}
+if(!confirm(dd?`إقفال اليوم مع ${dd} فرق؟`:'تأكيد إقفال اليوم؟'))return;
+c.done=true;c.dd=dd;c.at=new Date().toISOString();S.b=Date.now();save();R();
+if(await abk())alert('تم حفظ نسخة احتياطية في المجلد');else bk()}
 function st(t){F.type=t;$('bi').classList.toggle('on',t=='in');$('bo').classList.toggle('on',t=='out');fu()}
 function fu(){const o=F.type=='out';$('wn').hidden=!(o&&!$('iv').value.trim());$('pl').textContent=o?'المُسلَّم له (المحل أو الشخص)':'المستلَم منه (المورد)'}
 function calc(){$('tt').value=n((parseFloat($('w').value)||0)*(parseInt($('q').value)||0))+' جم'}
@@ -297,6 +321,6 @@ function rs(i){const f=i.files[0];if(!f)return;const r=new FileReader();r.onload
 function prn(){tab(0);setTimeout(()=>print(),150)}
 $('w').innerHTML=W.map(w=>`<option value="${w}">${w} جم</option>`).join('');
 $('kw').innerHTML=$('w').innerHTML;mig();$('dt').value=D;$('dt').onchange=function(){D=this.value||today();R()};
-st('in');calc();tab(0);MO.observe(document.body,{childList:true,subtree:true,characterData:true});setL(L);
+st('in');calc();tab(0);MO.observe(document.body,{childList:true,subtree:true,characterData:true});setL(L);try{navigator.storage.persist().then(bst)}catch(e){}
 </script>
 <script>if('serviceWorker' in navigator&&location.protocol.startsWith('http'))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))</script></body></html>
